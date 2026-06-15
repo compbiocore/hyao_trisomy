@@ -1,0 +1,1718 @@
+---
+title: "trisomy"
+format: html
+editor: visual
+---
+
+# Load
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(GenomeInfoDb)
+library(Biostrings)
+.libPaths(c("/usr/local/lib/R/site-library","/usr/local/lib/R/library"))
+library(terra)
+library(monocle3)
+library(SeuratWrappers)
+library(patchwork)
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+
+library(Seurat)
+library(patchwork)
+library(future)
+library(rsvd)
+library(reshape2)
+#library(rstatix)
+library(biomaRt)
+library(stringr)
+library(gridExtra)
+#library(data.table)
+#library(xlsx)
+library(openxlsx)
+library(plyr)
+library(RColorBrewer)
+#library(viridis)
+library(stringr)
+set.seed(61)
+options(future.globals.maxSize = 4000 * 1024^3)
+future::plan("multisession", workers = 4)
+load((here::here('20241220.RData')))
+
+#save.image(here::here('20241220.RData'))
+```
+
+# Which cell types are senescing? Mesenchymal? Macros? Also need to do enrichment analysis in those cell types
+
+# Which pathways are enriched in senscent cell clusters and types?
+
+# Compute DEGs per cluster and send to Hongwei
+
+# Use the ML method to assigne cell types and also send to Hongwei
+
+# Load data
+```{r}
+
+# Load the samples sheet
+samples <- read.delim(here::here('cellranger/samples.txt'), sep = ',', header = FALSE, col.names = c('orig.ident', 'sample', 'time', 'genotype', 'sex'))
+#these are all still embryonic cells so the different times are ok.
+#https://www.nature.com/articles/s41422-023-00802-6
+
+```
+
+# Import
+```{r}
+GSM8403163 <- ReadMtx(mtx = here::here('cellranger/GSM8403163/GSM8403163_3412_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403163/GSM8403163_3412_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403163/GSM8403163_3412_features.tsv.gz'))
+
+
+GSM8403164 <- ReadMtx(mtx = here::here('cellranger/GSM8403164/GSM8403164_3416_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403164/GSM8403164_3416_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403164/GSM8403164_3416_features.tsv.gz'))
+
+GSM8403165 <- ReadMtx(mtx = here::here('cellranger/GSM8403165/GSM8403165_3442_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403165/GSM8403165_3442_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403165/GSM8403165_3442_features.tsv.gz'))
+
+GSM8403166 <- ReadMtx(mtx = here::here('cellranger/GSM8403166/GSM8403166_3463_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403166/GSM8403166_3463_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403166/GSM8403166_3463_features.tsv.gz'))
+
+GSM8403167 <- ReadMtx(mtx = here::here('cellranger/GSM8403167/GSM8403167_3675_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403167/GSM8403167_3675_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403167/GSM8403167_3675_features.tsv.gz'))
+
+GSM8403168 <- ReadMtx(mtx = here::here('cellranger/GSM8403168/GSM8403168_H28406_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403168/GSM8403168_H28406_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403168/GSM8403168_H28406_features.tsv.gz'))
+
+GSM8403169 <- ReadMtx(mtx = here::here('cellranger/GSM8403169/GSM8403169_H28412_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403169/GSM8403169_H28412_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403169/GSM8403169_H28412_features.tsv.gz'))
+
+GSM8403170 <- ReadMtx(mtx = here::here('cellranger/GSM8403170/GSM8403170_H28433_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403170/GSM8403170_H28433_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403170/GSM8403170_H28433_features.tsv.gz'))
+
+GSM8403171 <- ReadMtx(mtx = here::here('cellranger/GSM8403171/GSM8403171_H28554_matrix.mtx.gz'),
+                      cells = here::here('cellranger/GSM8403171/GSM8403171_H28554_barcodes.tsv.gz'),
+                      features = here::here('cellranger/GSM8403171/GSM8403171_H28554_features.tsv.gz'))
+
+GSM8403163 <- CreateSeuratObject(counts = GSM8403163, project = "GSM8403163", min.cells = 5, min.features = 200)
+GSM8403164 <- CreateSeuratObject(counts = GSM8403164, project = "GSM8403164", min.cells = 5, min.features = 200)
+GSM8403165 <- CreateSeuratObject(counts = GSM8403165, project = "GSM8403165", min.cells = 5, min.features = 200)
+GSM8403166 <- CreateSeuratObject(counts = GSM8403166, project = "GSM8403166", min.cells = 5, min.features = 200)
+GSM8403167 <- CreateSeuratObject(counts = GSM8403167, project = "GSM8403167", min.cells = 5, min.features = 200)
+GSM8403168 <- CreateSeuratObject(counts = GSM8403168, project = "GSM8403168", min.cells = 5, min.features = 200)
+GSM8403169 <- CreateSeuratObject(counts = GSM8403169, project = "GSM8403169", min.cells = 5, min.features = 200)
+GSM8403170 <- CreateSeuratObject(counts = GSM8403170, project = "GSM8403170", min.cells = 5, min.features = 200)
+GSM8403171 <- CreateSeuratObject(counts = GSM8403171, project = "GSM8403171", min.cells = 5, min.features = 200)
+
+all_data <- merge(x = GSM8403163, y = c(GSM8403164, GSM8403165, GSM8403166, GSM8403167, GSM8403168, GSM8403169, GSM8403170, GSM8403171),
+                  add.cell.ids = c('GSM8403163','GSM8403164','GSM8403165','GSM8403166','GSM8403167','GSM8403168','GSM8403169','GSM8403170','GSM8403171'), project = 'trisomy')
+```
+
+
+# QC
+```{r}
+all_data[["percent.mt"]] <- PercentageFeatureSet(all_data, pattern = "^MT-")
+
+VlnPlot(all_data, features = "nFeature_RNA")
+
+VlnPlot(all_data, features = "nCount_RNA")
+
+VlnPlot(all_data, features="percent.mt")
+
+FeatureScatter(all_data, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+FeatureScatter(all_data, feature1 = "nCount_RNA", feature2 = "percent.mt")
+
+FeatureScatter(all_data, feature1 = "nFeature_RNA", feature2 = "percent.mt")
+
+qc_data <- all_data@meta.data[c('orig.ident','nCount_RNA','nFeature_RNA','percent.mt')] %>% arrange(percent.mt)
+
+ggplot2::ggplot(qc_data,ggplot2:: aes(x = nCount_RNA, y = nFeature_RNA, color = percent.mt)) + 
+  ggplot2::geom_point() + 
+  ggplot2::scale_color_gradientn(colors = rev(brewer.pal(5, "Spectral")), limits = c(0,100), oob = (scales::squish)) +
+  ggplot2::facet_wrap(~orig.ident) + 
+  ggplot2::theme_bw()
+```
+
+# Filtering
+```{r}
+all_data_sub <- subset(all_data, subset = nFeature_RNA > 500 & nFeature_RNA < 10000 & percent.mt < 25)
+
+qc_data_sub <- all_data_sub@meta.data[c('orig.ident','nCount_RNA','nFeature_RNA','percent.mt')] %>% arrange(percent.mt)
+
+ggplot2::ggplot(qc_data_sub,ggplot2:: aes(x = nCount_RNA, y = nFeature_RNA, color = percent.mt)) + 
+  ggplot2::geom_point() + 
+  ggplot2::scale_color_gradientn(colors = rev(brewer.pal(5, "Spectral")), limits = c(0,100), oob = (scales::squish)) +
+  ggplot2::facet_wrap(~orig.ident) + 
+  ggplot2::theme_bw()
+
+table(all_data@meta.data$orig.ident)
+table(all_data_sub@meta.data$orig.ident)
+```
+
+# Normalize, PCA, Elbow
+```{r "SCTransform"}
+start.time <- Sys.time()
+all_data_sub <- SCTransform(all_data_sub, verbose = TRUE, return.only.var.genes = FALSE, variable.features.n = 10000)
+end.time <- Sys.time()
+end.time - start.time
+  
+all_data_sub <- RunPCA(all_data_sub)
+
+ElbowPlot(all_data_sub)
+
+all_data_sub <- RunUMAP(all_data_sub, dims = 1:15)
+DimPlot(all_data_sub, reduction = "umap", group.by = c("orig.ident"))
+```
+
+# Integrate and cluster
+```{r}
+all_data_sub <- IntegrateLayers(
+  object = all_data_sub, 
+  method = RPCAIntegration, 
+  normalization.method = "SCT",
+  verbose = FALSE
+)
+
+
+all_data_sub <- FindNeighbors(all_data_sub, reduction = "integrated.dr", dims = 1:15)
+
+
+all_data_sub <- FindClusters(all_data_sub, resolution = .8, cluster.name = "rpca_clusters_8",future.seed=TRUE)
+all_data_sub <- FindClusters(all_data_sub, resolution = .5, cluster.name = "rpca_clusters_5",future.seed=TRUE)
+all_data_sub <- FindClusters(all_data_sub, resolution = .3, cluster.name = "rpca_clusters_3",future.seed=TRUE)
+all_data_sub <- FindClusters(all_data_sub, resolution = .1, cluster.name = "rpca_clusters_1",future.seed=TRUE)
+
+all_data_sub <- RunUMAP(all_data_sub, dims = 1:15, reduction = "integrated.dr")
+
+
+test <- left_join(all_data_sub@meta.data, samples, by = c('orig.ident'='orig.ident'))
+all_data_sub <- AddMetaData(all_data_sub, metadata=test)
+
+DimPlot(
+  all_data_sub,
+  reduction = "umap",
+  group.by = "seurat_clusters",
+  combine = FALSE, label.size = 2
+)
+
+DimPlot(
+  all_data_sub,
+  reduction = "umap",
+  group.by = "rpca_clusters_1",
+  combine = FALSE, label.size = 2
+)
+
+DimPlot(
+  all_data_sub,
+  reduction = "umap",
+  group.by = "rpca_clusters_3",
+  combine = FALSE, label.size = 2
+)
+
+DimPlot(
+  all_data_sub,
+  reduction = "umap",
+  group.by = "rpca_clusters_5",
+  combine = FALSE, label.size = 2
+)
+
+DimPlot(
+  all_data_sub,
+  reduction = "umap",
+  group.by = "rpca_clusters_8",
+  combine = FALSE, label.size = 2
+)
+
+DimPlot(
+  all_data_sub,
+  reduction = "umap",
+  group.by = "orig.ident",
+  combine = FALSE, label.size = 2
+)
+
+DimPlot(
+  all_data_sub,
+  reduction = "umap",
+  group.by = "genotype",
+  combine = FALSE, label.size = 2
+)
+#all_data_sub_copy <- all_data_sub
+
+
+# work with rpca_clusters_1 since it has 11 clusters, similar to preprint https://www.biorxiv.org/content/10.1101/2023.03.30.534839v1.full.pdf
+
+all_data_sub <- PrepSCTFindMarkers(all_data_sub)
+#DefaultAssay(all_data_sub) <- "RNA" code breaks with RNA assay!
+
+Idents(all_data_sub) <- 'rpca_clusters_1'
+cluster_markers <- FindAllMarkers(all_data_sub, assay = 'SCT', verbose = TRUE)
+
+test <- dplyr::left_join(all_data_sub@meta.data, samples, by = 'orig.ident')
+rownames(test) <- rownames(all_data_sub@meta.data)
+all_data_sub <- AddMetaData(all_data_sub, metadata = test)
+
+#We want to look at subpopulations of cluster 2, we will work w rpca_cluster_8 for that part.
+table(all_data_sub@meta.data$rpca_clusters_8, all_data_sub@meta.data$rpca_clusters_1)
+
+#It looks like most of cluster 2 is split across rpca_cluster_8 clusters 5, 11,21,22.
+cluster_2_seurat <- subset(all_data_sub, subset = rpca_clusters_1 == '2')
+
+```
+
+# Find markers
+```{r}
+Idents(all_data_sub) <- 'rpca_clusters_1'
+cluster_markers <- FindAllMarkers(all_data_sub, assay = 'SCT', verbose = TRUE)
+
+Idents(all_data_sub) <- 'genotype'
+status_markers <- FindAllMarkers(all_data_sub, assay = 'SCT', verbose = TRUE)
+
+
+
+```
+
+# Get some pathways data from reactome, biocarta, wikipathways, pid, and other senescence markers.
+
+# Get gene sets
+```{r}
+library(msigdbr)
+h_gene_sets <- msigdbr(species = "Homo sapiens", category = "C8")
+
+human_reactome <- msigdbr(species = "Homo sapiens", subcategory = "CP:REACTOME")
+human_biocarta <- msigdbr(species = "Homo sapiens", subcategory = "CP:BIOCARTA")
+
+human_pid <- msigdbr(species = "Homo sapiens", subcategory = "CP:PID")
+human_wikipathways <- msigdbr(species = "Homo sapiens", subcategory = "CP:WIKIPATHWAYS")
+
+reactome_term2gene <- human_reactome %>% dplyr::select(c(gs_exact_source, gene_symbol))
+reactome_term2name <- human_reactome %>% dplyr::select(c(gs_exact_source, gs_name))
+
+biocarta_term2gene <- human_biocarta %>% dplyr::select(c(gs_exact_source, gene_symbol))
+biocarta_term2name <- human_biocarta %>% dplyr::select(c(gs_exact_source, gs_name))
+
+pid_term2gene <- human_pid %>% dplyr::select(c(gs_exact_source, gene_symbol))
+pid_term2name <- human_pid %>% dplyr::select(c(gs_exact_source, gs_name))
+
+wikipathways_term2gene <- human_wikipathways %>% dplyr::select(c(gs_exact_source, gene_symbol))
+wikipathways_term2name <- human_wikipathways %>% dplyr::select(c(gs_exact_source, gs_name))
+
+dfl <- str_subset(unique(h_gene_sets$gs_name), pattern = "DESCARTES_FETAL_LUNG", negate = FALSE)
+tl <- str_subset(unique(h_gene_sets$gs_name), pattern = "TRAVAGLINI_LUNG", negate = FALSE) #DESCARTES_FETAL_LUNG_BRONCHIOLAR_AND_ALVEOLAR_EPITHELIAL_CELLS or TRAVAGLINI_LUNG_BASAL_CELL
+
+dfl_genesets <- h_gene_sets[h_gene_sets$gs_name %in% dfl,]
+tl_genesets <- h_gene_sets[h_gene_sets$gs_name %in% tl,]
+
+dfl_term2gene <- dfl_genesets %>% dplyr::select(c(gs_name, gene_symbol))
+dfl_term2name <- dfl_genesets %>% dplyr::select(c(gs_url, gs_name))
+
+tl_term2gene <- tl_genesets %>% dplyr::select(c(gs_name, gene_symbol))
+tl_term2name <- tl_genesets %>% dplyr::select(c(gs_url, gs_name))
+
+
+human_senescence <- human_reactome %>% dplyr::filter(gs_name == 'REACTOME_CELLULAR_SENESCENCE')
+human_senescence$gene_symbol
+#can't find mayo in msigdbr for some reason, manually copy/paste geneIDs here:
+sen_mayo <- c('ACVR1B','ANG','ANGPT1','ANGPTL4','AREG','AXL','BEX3','BMP2','BMP6','C3','CCL1','CCL13','CCL16','CCL2','CCL20','CCL24','CCL26','CCL3','CCL4','CCL5','CCL7','CCL8','CD55','CD9','CSF1','CSF2','CSF2RB','CST4','CTNNB1','CTSB','CXCL1','CXCL10','CXCL12','CXCL16','CXCL2','CXCL3','CXCL8','CXCR2','DKK1','EDN1','EGF','EGFR','EREG','ESM1','ETS2','FAS','FGF1','FGF2','FGF7','GDF15','GEM','GMFG','HGF','HMGB1','ICAM1','ICAM3','IGF1','IGFBP1','IGFBP2','IGFBP3','IGFBP4','IGFBP5','IGFBP6','IGFBP7','IL10','IL13','IL15','IL18','IL1A','IL1B','IL2','IL32','IL6','IL6ST','IL7','INHA','IQGAP2','ITGA2','ITPKA','JUN','KITLG','LCP1','MIF','MMP1','MMP10','MMP12','MMP13','MMP14','MMP2','MMP3','MMP9','NAP1L4','NRG1','PAPPA','PECAM1','PGF','PIGF','PLAT','PLAU','PLAUR','PTBP1','PTGER2','PTGES','RPS6KA5','SCAMP4','SELPLG','SEMA3F','SERPINB4','SERPINE1','SERPINE2','SPP1','SPX','TIMP2','TNF','TNFRSF10C','TNFRSF11B','TNFRSF1A','TNFRSF1B','TUBGCP2','VEGFA','VEGFC','VGF','WNT16','WNT2')
+
+senescence_genes <- unique(c(human_senescence$gene_symbol, sen_mayo))
+```
+
+
+# Filter the DEGs to see which genes are in the different pathways of interest
+```{r}
+de_cluster_markers <- cluster_markers %>% dplyr::filter(p_val_adj <= .05) %>% dplyr::filter(abs(avg_log2FC) >= 1)  
+de_status_markers <- status_markers %>% dplyr::filter(p_val_adj <= .05) 
+
+de_cluster_markers_senescence <- de_cluster_markers[de_cluster_markers$gene %in% human_senescence$gene_symbol,] #FOS, ID1, IGFBP7, JUN  
+de_status_markers_senescence <- de_status_markers[de_status_markers$gene %in% human_senescence$gene_symbol,]
+
+
+de_cluster_markers_sen_mayo <- de_cluster_markers[de_cluster_markers$gene %in% sen_mayo,] #MMP2, GMFG, IGFBP2, IGFBP7
+de_status_markers_sen_mayo <- de_status_markers[de_status_markers$gene %in% sen_mayo,]
+
+```
+
+# Calculate senescence gene enrichment scores
+```{r}
+library(AUCell)
+exprMat <- GetAssayData(all_data_sub, layer = 'counts')
+cells_rankings <- AUCell_buildRankings(exprMat, plotStats=FALSE)
+cells_AUC <- AUCell_calcAUC(sen_mayo, cells_rankings)
+scores <- getAUC(cells_AUC)
+scores_mat <- as.matrix(scores)
+
+metadata_scores <- data.frame(scores_mat[1:ncol(scores_mat)])
+colnames(metadata_scores) <- c("senescence_score")
+rownames(metadata_scores) <- colnames(scores_mat)
+
+all_data_sub <- AddMetaData(all_data_sub,metadata_scores, col.name = 'senescence_score')
+
+```
+
+# Make senescence score results plots
+```{r}
+p1 <- FeaturePlot(subset(all_data_sub,subset = (genotype == 'T21')),
+                         features = 'senescence_score',
+                         order = T,
+                  pt.size = 1) & 
+   scale_color_gradientn(limits = c(0,.2), name = 'senescence \nscore', colors = viridis::turbo(n = 10, direction = 1)) &
+  theme(text = element_text(face = "bold", size = 20),
+        axis.text.x=element_text(angle=45, hjust=1, size=20),
+        axis.title = element_text(size=20,face="bold"),
+        axis.title.y.right = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.line = element_line(size=1),
+        legend.position = 'right') & 
+  labs(title = 'T21')
+   
+
+
+p2 <- FeaturePlot(subset(all_data_sub,subset = (genotype == 'Control')),
+                         features = 'senescence_score',
+                         order = T,
+                  pt.size = 1) & 
+   scale_color_gradientn(limits = c(0,.2),name = 'senescence \nscore', colors = viridis::turbo(n = 10, direction = 1)) &
+  theme(text = element_text(face = "bold", size = 20),
+        axis.text.x=element_text(angle=45, hjust=1, size=20),
+        axis.title = element_text(size=20,face="bold"),
+        axis.title.y.right = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.line = element_line(size=1),
+        legend.position = 'right') & 
+  labs(title = 'Control')
+
+
+Idents(all_data_sub) <- 'seurat_clusters'
+
+p3 <- DimPlot(object = all_data_sub, label = T, label.box=T, label.size = 7, pt.size = 1) & NoLegend() &
+  theme(text = element_text(face = "bold", size = 20))
+
+
+library(patchwork)
+p4 <- p1 + p2 + p3 + plot_layout(ncol=3)
+
+Idents(all_data_sub) <- 'rpca_clusters_8'
+
+p1a<-FeaturePlot(subset(all_data_sub,subset = (genotype == 'Control' & seurat_clusters == '2')),
+                         features = 'senescence_score',
+                         order = T,
+                  pt.size = 1) & 
+   scale_color_gradientn(limits = c(0,.2),name = 'senescence \nscore', colors = viridis::turbo(n = 10, direction = 1)) &
+  theme(text = element_text(face = "bold", size = 20),
+        axis.text.x=element_text(angle=45, hjust=1, size=20),
+        axis.title = element_text(size=20,face="bold"),
+        axis.title.y.right = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.line = element_line(size=1),
+        legend.position = 'right') & 
+  labs(title = 'Control')
+
+p2a<-FeaturePlot(subset(all_data_sub,subset = (genotype == 'T21' & seurat_clusters == '2')),
+                         features = 'senescence_score',
+                         order = T,
+                  pt.size = 1) & 
+   scale_color_gradientn(limits = c(0,.2),name = 'senescence \nscore', colors = viridis::turbo(n = 10, direction = 1)) &
+  theme(text = element_text(face = "bold", size = 20),
+        axis.text.x=element_text(angle=45, hjust=1, size=20),
+        axis.title = element_text(size=20,face="bold"),
+        axis.title.y.right = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.line = element_line(size=1),
+        legend.position = 'right') & 
+  labs(title = 'T21')
+
+p3a <- DimPlot(object = subset(all_data_sub,subset = (seurat_clusters == '2')), label = T, label.box=T, label.size = 7, pt.size = 1) & NoLegend() &
+  theme(text = element_text(face = "bold", size = 20))
+
+p4a <- p1a + p2a + p3a + plot_layout(ncol=3)
+
+VlnPlot(subset(all_data_sub,subset = (seurat_clusters == '2')), features = 'senescence_score', split.by = 'genotype')
+```
+
+
+# Save senescence score results plots
+```{r eval = FALSE}
+ggsave(filename=here::here('clusters.png'),
+       plot=p3,
+         device='png',
+       units = 'in',
+       height = 5,
+       width = 7)
+
+ggsave(filename=here::here('clusters_and_senescence.png'),
+       plot=p4,
+         device='png',
+       units = 'in',
+       height = 5,
+       width = 12)
+```
+
+# AUCell to calculate a score for each cell type in  dfl_genesets and tl_genesets
+```{r}
+#There are 13 or 54 types of cells:
+dfl_levels <- dfl_genesets$gs_name %>% unique()
+tl_levels <- tl_genesets$gs_name %>% unique()
+
+geneset_annotate <- function(geneset, rankings){
+  gs_list_genes <- geneset[,'gene_symbol']
+  AUC <- AUCell_calcAUC(gs_list_genes, rankings)
+  scores <- getAUC(AUC)
+  scores_mats <- as.matrix(scores)
+  scores_df <- as.data.frame(scores_mats[1:ncol(scores_mats)])
+  colnames(scores_df) <- c(geneset[,'gs_name'] %>% unique())
+  rownames(scores_df) <- colnames(scores_mats)
+  return(scores_df)
+}
+
+dfl_aucell_annotations <- lapply(seq_along(dfl_levels), function(i) geneset_annotate(dfl_genesets %>% dplyr::filter(gs_name == dfl_levels[i]), cells_rankings))
+dfl_aucell_annotations_df <- bind_cols(dfl_aucell_annotations)
+dfl_new_labels <- colnames(dfl_aucell_annotations_df)[max.col(dfl_aucell_annotations_df)]
+dfl_aucell_annotations_df$dfl_aucell_types <- dfl_new_labels
+dfl_aucell_metadata <- dfl_aucell_annotations_df['dfl_aucell_types']
+all_data_sub <- AddMetaData(all_data_sub, dfl_aucell_metadata, col.name = 'dfl_aucell_annotations')
+
+
+tl_aucell_annotations <- lapply(seq_along(tl_levels), function(i) geneset_annotate(tl_genesets %>% dplyr::filter(gs_name == tl_levels[i]), cells_rankings))
+tl_aucell_annotations_df <- bind_cols(tl_aucell_annotations)
+tl_new_labels <- colnames(tl_aucell_annotations_df)[max.col(tl_aucell_annotations_df)]
+tl_aucell_annotations_df$tl_aucell_types <- tl_new_labels
+tl_aucell_metadata <- tl_aucell_annotations_df['tl_aucell_types']
+all_data_sub <- AddMetaData(all_data_sub, tl_aucell_metadata, col.name = 'tl_aucell_annotations')
+
+
+#save.image(here::here('20241125.RData'))
+
+
+#Based on marker genes of cluster 2, it includes type 1 and 2 epithelial cells, endothelial cells, fibroblasts, smooth muscle cells, and macrophages. Question: which are the percentage of these types of cells in cluster 2? Which type of cells contribute to larger portion of senescent cells in cluster 2?
+
+all_data_sub@meta.data$seurat_cluster_aucell <- paste0(all_data_sub@meta.data$seurat_clusters, "_", all_data_sub@meta.data$dfl_aucell_annotations)
+
+VlnPlot(all_data_sub, group.by = "seurat_clusters", features = "senescence_score")
+
+VlnPlot(all_data_sub, features = "senescence_score", group.by = 'seurat_clusters', split.by = 'genotype')
+
+VlnPlot(subset(all_data_sub, subset = (seurat_clusters == 2 )), features = "senescence_score", group.by = 'dfl_aucell_annotations')
+
+table(all_data_sub@meta.data$seurat_clusters, all_data_sub@meta.data$dfl_aucell_annotations) %>% t()
+all_data_sub@meta.data$seurat_cluster_aucell <- paste0(all_data_sub@meta.data$seurat_clusters, "_", all_data_sub@meta.data$dfl_aucell_annotations)
+test <- all_data_sub@meta.data %>% data.frame()
+test$senescence_score <- as.numeric(test$senescence_score)
+test$seurat_cluster_aucell <- as.factor(test$seurat_cluster_aucell)
+test %>% 
+  dplyr::group_by(seurat_clusters, dfl_aucell_annotations) %>% 
+  dplyr::summarize(mean_senescence_score=mean(senescence_score, na.rm=TRUE)) 
+
+#dfl_1 <- dfl_genesets %>% as.data.frame() %>% dplyr::filter(gs_name == dfl_levels[1])
+#dfl_1_genes <- dfl_1$gene_symbol
+#exprMat <- GetAssayData(all_data_sub, layer = 'counts')
+#cells_rankings <- AUCell_buildRankings(exprMat, plotStats=FALSE)
+#cells_AUC_dfl_1 <- AUCell_calcAUC(dfl_1_genes, cells_rankings) 
+#scores_dfl_1 <- getAUC(cells_AUC_dfl_1)
+#scores_mat_dfl_1 <- as.matrix(scores_dfl_1)
+#metadata_scores_dfl_1 <- data.frame(scores_mat_dfl_1[1:ncol(scores_mat_dfl_1)])
+#colnames(metadata_scores_dfl_1) <- c("DESCARTES_FETAL_LUNG_BRONCHIOLAR_AND_ALVEOLAR_EPITHELIAL_CELLS_SCORE")
+#rownames(metadata_scores_dfl_1) <- colnames(scores_mat_dfl_1)
+#all_data_sub <- AddMetaData(all_data_sub,metadata_scores_dfl_1, col.name = 'senescence_score')
+
+```
+
+#look at senesence scores for cluster 2 subclusters:
+```{r}
+#save.image(here::here('20241125.RData'))
+
+```
+
+
+# Get gene descriptions
+```{r}
+library(biomaRt)
+
+all_genes <- data.frame(cluster_markers[,'gene'])
+colnames(all_genes ) <- c('hgnc_symbol')
+human_biomart <- biomaRt::useEnsembl("ensembl", dataset = "hsapiens_gene_ensembl", mirror = 'asia')
+human_biomart_data <- getBM(mart = human_biomart , attributes = c("hgnc_symbol", "description"))
+all_genes_bm <- right_join(human_biomart_data, all_genes) %>% unique()
+```
+
+# Add gene description to clusters files
+```{r}
+cluster_markers <- left_join(cluster_markers, all_genes_bm, by = c('gene'='hgnc_symbol'))
+cluster_markers <- cluster_markers %>% dplyr::arrange(desc(avg_log2FC))
+cluster_markers <- cluster_markers %>% dplyr::arrange(cluster)
+cluster_levels <- unique(cluster_markers$cluster)
+cluster_levels <- factor(cluster_levels, levels = c('0','1','2','3','4','5','6','7','8','9','10'))
+
+cluster_markers_split <- lapply(seq_along(cluster_levels), function(i) cluster_markers %>% dplyr::filter(cluster == cluster_levels[i]))
+
+status_markers <- left_join(status_markers, all_genes_bm, by = c('gene'='hgnc_symbol'))
+status_markers <- status_markers %>% dplyr::arrange(desc(avg_log2FC))
+status_markers <- status_markers %>% dplyr::arrange(cluster)
+status_levels <- unique(status_markers$cluster)
+status_levels <- factor(status_levels, levels = c('T21', 'Control'))
+
+status_markers_split <- lapply(seq_along(status_levels), function(i) status_markers %>% dplyr::filter(cluster == status_levels[i]))
+
+Idents(all_data_sub) <- 'rpca_clusters_8'
+
+#It looks like most of cluster 2 is split across rpca_cluster_8 clusters 5, 11,21,22.
+cluster_2_seurat <- subset(all_data_sub, subset = rpca_clusters_1 == '2')
+
+DimPlot(cluster_2_seurat, group.by = 'rpca_clusters_8')
+DimPlot(cluster_2_seurat, group.by = 'rpca_clusters_5')
+DimPlot(cluster_2_seurat, group.by = 'rpca_clusters_3')
+
+Idents(cluster_2_seurat) <- 'orig.ident'
+cluster_2_seurat <- PrepSCTFindMarkers(cluster_2_seurat)
+
+Idents(cluster_2_seurat) <- 'genotype'
+cluster2_genotype_markers <- FindAllMarkers(cluster_2_seurat, assay = 'SCT', verbose = TRUE)
+top_T21_markers <- cluster2_genotype_markers %>% dplyr::filter(avg_log2FC > 0) %>% dplyr::filter(p_val_adj < .05) %>% dplyr::arrange(desc(avg_log2FC)) %>% dplyr::filter(cluster == 'T21')
+
+DotPlot(cluster_2_seurat, features = top_T21_markers$gene[1:30])+
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Cluster 2 - T21 vs Control top 10 markers") + coord_flip()
+
+#ggsave(filename=here::here('cluster_2_genotype_markers_dotplot.png'),device='png', units = 'in',height = 11,width = 11)
+
+#openxlsx::write.xlsx(x = cluster2_genotype_markers, file = here::here('cluster2_genotype_markers.xlsx'))
+
+top_T21_markers_down <- cluster2_genotype_markers %>% dplyr::filter(avg_log2FC < 0) %>% dplyr::filter(p_val_adj < .05) %>% dplyr::arrange((avg_log2FC)) %>% dplyr::filter(cluster == 'T21')
+
+DotPlot(cluster_2_seurat, features = top_T21_markers_down$gene[1:30])+
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Cluster 2 - T21 vs Control top 10 markers down regulated") + coord_flip()
+
+top_Control_markers <- cluster2_genotype_markers %>% dplyr::filter(avg_log2FC > 0) %>% dplyr::filter(p_val_adj < .05) %>% dplyr::arrange(desc(avg_log2FC)) %>% dplyr::filter(cluster == 'Control')
+
+DotPlot(cluster_2_seurat, features = top_Control_markers$gene[1:30])+
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Cluster 2 - T21 vs Control top 10 markers in Control") + coord_flip()
+```
+
+# Look at cluster 2 subpopulation 
+```{r}
+Idents(cluster_2_seurat) <- 'rpca_clusters_8'
+
+cluster2_subpop_markers <- FindAllMarkers(cluster_2_seurat, assay = 'SCT', verbose = TRUE)
+
+cluster2_subpop_markers <- left_join(cluster2_subpop_markers , all_genes_bm, by = c('gene'='hgnc_symbol'))
+cluster2_subpop_markers <- cluster2_subpop_markers %>% dplyr::arrange(desc(avg_log2FC))
+cluster2_subpop_markers <- cluster2_subpop_markers %>% dplyr::arrange(cluster)
+cluster2_subpop_markers <- cluster2_subpop_markers %>% dplyr::arrange(p_val_adj)
+
+cluster2_subpop_markers_levels <- as.factor(c('5', '11', '13', '21', '22'))
+cluster2_subpop_markers_split <- lapply(seq_along((cluster2_subpop_markers$cluster %>% unique())), function(i) cluster2_subpop_markers %>% dplyr::filter(cluster == (cluster2_subpop_markers$cluster %>% unique())[i]))
+
+#lapply(seq_along( (cluster2_subpop_markers$cluster %>% unique()) ), function(i) openxlsx::write.xlsx(x = cluster2_subpop_markers_split[[i]], file = #here::here(paste0('cluster_2_subcluster_', (cluster2_subpop_markers$cluster %>% unique())[i], '_markers.xlsx'))))
+
+DotPlot(subset(cluster_2_seurat, subset = (rpca_clusters_8 == '5' | rpca_clusters_8 == '11' | rpca_clusters_8 == '13' | rpca_clusters_8 == '21' |rpca_clusters_8 == '22' )), 
+        features = c(
+  ((cluster2_subpop_markers_split[[1]] %>% dplyr::arrange(p_val_adj))[c(1:10),])$gene,
+  ((cluster2_subpop_markers_split[[2]] %>% dplyr::arrange(p_val_adj))[c(1:10),])$gene,
+  ((cluster2_subpop_markers_split[[3]] %>% dplyr::arrange(p_val_adj))[c(1:10),])$gene,
+  ((cluster2_subpop_markers_split[[4]] %>% dplyr::arrange(p_val_adj))[c(1:10),])$gene,
+  ((cluster2_subpop_markers_split[[5]] %>% dplyr::arrange(p_val_adj))[c(1:10),])$gene) ) +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Cluster 2 subclusters - top 10 markers") + coord_flip()
+
+#ggsave(filename=here::here('cluster_2_subcluster_markers_dotplot.png'),device='png', units = 'in',height = 11,width = 11)
+
+```
+# Based on emails from Hongwei, he is interested in understanding Cluster 2 sub-cluster 5,11,and 21 markers that are different betw T21 and Control and also wants to know about the differen senescence scores within subtypes across genotypes
+
+```{r}
+Idents(cluster_2_seurat) <- 'genotype'
+
+cluster2_genotype_markers <- FindAllMarkers(cluster_2_seurat, assay = 'SCT', verbose = TRUE)
+
+
+```
+
+
+# Try making a new ident to compare each subcluster T21 vs Control:
+```{r}
+cluster_2_seurat@meta.data$rpca_clusters_8_genotype <- paste0('subcluster_', cluster_2_seurat@meta.data$rpca_clusters_8, '-', cluster_2_seurat@meta.data$genotype)
+Idents(cluster_2_seurat) <- 'rpca_clusters_8_genotype'
+
+subcluster_5_genotype_markers <- FindMarkers(cluster_2_seurat, ident.1 = 'subcluster_5-T21', ident.2 = 'subcluster_5-Control')
+subcluster_11_genotype_markers <- FindMarkers(cluster_2_seurat, ident.1 = 'subcluster_11-T21', ident.2 = 'subcluster_11-Control')
+subcluster_21_genotype_markers <- FindMarkers(cluster_2_seurat, ident.1 = 'subcluster_21-T21', ident.2 = 'subcluster_21-Control')
+
+subcluster_5_genotype_markers_filtered <- subcluster_5_genotype_markers %>% dplyr::filter(p_val_adj <= .05) %>% dplyr::filter(avg_log2FC > 0) %>% dplyr::filter(pct.1 >= .2)  %>% dplyr::arrange((desc(avg_log2FC)))
+subcluster_11_genotype_markers_filtered <- subcluster_11_genotype_markers %>% dplyr::filter(p_val_adj <= .05) %>% dplyr::filter(avg_log2FC > 0) %>% dplyr::filter(pct.1 >= .2) %>% dplyr::arrange((desc(avg_log2FC)))
+subcluster_21_genotype_markers_filtered <- subcluster_21_genotype_markers %>% dplyr::filter(p_val_adj <= .05) %>% dplyr::filter(avg_log2FC > 0) %>% dplyr::filter(pct.1 >= .2) %>% dplyr::arrange((desc(avg_log2FC)))
+
+top_10_markers_per_subcluster <- unique(c(
+  rownames(subcluster_5_genotype_markers_filtered)[1:10],
+  rownames(subcluster_11_genotype_markers_filtered)[1:10],
+  rownames(subcluster_21_genotype_markers_filtered)[1:10]))
+
+
+top_10_markers_per_subcluster_no_5 <- unique(c(
+  rownames(subcluster_11_genotype_markers_filtered)[1:10],
+  rownames(subcluster_21_genotype_markers_filtered)[1:10]))
+
+
+subcluster_5_genotype_markers_filtered_unique <- subcluster_5_genotype_markers_filtered[ !( rownames(subcluster_5_genotype_markers_filtered) %in% c(rownames(subcluster_11_genotype_markers_filtered))),]
+subcluster_5_genotype_markers_filtered_unique <- subcluster_5_genotype_markers_filtered_unique[ !( rownames(subcluster_5_genotype_markers_filtered_unique) %in% c(rownames(subcluster_21_genotype_markers_filtered))),]
+                                                                                                                                                
+subcluster_11_genotype_markers_filtered_unique <- subcluster_11_genotype_markers_filtered[ !( rownames(subcluster_11_genotype_markers_filtered) %in% c(rownames(subcluster_5_genotype_markers_filtered))),]
+subcluster_11_genotype_markers_filtered_unique <- subcluster_11_genotype_markers_filtered_unique[ !( rownames(subcluster_11_genotype_markers_filtered_unique) %in% c(rownames(subcluster_21_genotype_markers_filtered))),]
+
+subcluster_21_genotype_markers_filtered_unique <- subcluster_21_genotype_markers_filtered[ !( rownames(subcluster_21_genotype_markers_filtered) %in% c(rownames(subcluster_11_genotype_markers_filtered))),]
+subcluster_21_genotype_markers_filtered_unique <- subcluster_21_genotype_markers_filtered_unique[ !( rownames(subcluster_21_genotype_markers_filtered_unique) %in% c(rownames(subcluster_5_genotype_markers_filtered))),]
+
+
+
+unique_markers <- c(rownames(subcluster_5_genotype_markers_filtered_unique)[1:10],
+                    rownames(subcluster_11_genotype_markers_filtered_unique)[1:10],
+                    rownames(subcluster_21_genotype_markers_filtered_unique)[1:2]) #only has 2
+
+
+common_markers <- subcluster_5_genotype_markers_filtered[rownames(subcluster_5_genotype_markers_filtered) %in%  rownames(subcluster_11_genotype_markers_filtered[rownames(subcluster_11_genotype_markers_filtered) %in% rownames(subcluster_21_genotype_markers_filtered),])  ,]
+
+
+cluster_2_senescent_subclusters <- subset(cluster_2_seurat, subset = rpca_clusters_8 == '5' | rpca_clusters_8 == '11' | rpca_clusters_8 == '21')
+
+cluster_2_senescent_subclusters@meta.data$rpca_clusters_8_genotype <- as.factor(cluster_2_senescent_subclusters@meta.data$rpca_clusters_8_genotype)
+
+cluster_2_senescent_subclusters@meta.data$rpca_clusters_8_genotype <- factor(cluster_2_senescent_subclusters@meta.data$rpca_clusters_8_genotype, levels = c("subcluster_5-Control","subcluster_5-T21","subcluster_11-Control","subcluster_11-T21","subcluster_21-Control","subcluster_21-T21"))
+
+DotPlot(cluster_2_senescent_subclusters , 
+        features = rownames(subcluster_21_genotype_markers_filtered)[1:10], group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subcluster 21 top 10 markers - T21 vs Control") + coord_flip()
+
+DotPlot(cluster_2_senescent_subclusters , 
+        features = rownames(subcluster_5_genotype_markers_filtered)[1:10], group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subcluster 5 top 10 markers - T21 vs Control") + coord_flip()
+
+DotPlot(cluster_2_senescent_subclusters , 
+        features = rownames(subcluster_11_genotype_markers_filtered)[1:10], group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subcluster 11 top 10 markers - T21 vs Control") + coord_flip()
+
+DotPlot(subset(cluster_2_senescent_subclusters, subset = rpca_clusters_8 == 11 | rpca_clusters_8 == 21) , 
+        features = rownames(subcluster_11_genotype_markers_filtered)[1:10], group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subcluster 11 top 10 markers - T21 vs Control") + coord_flip()
+
+
+DotPlot(subset(cluster_2_senescent_subclusters, subset = rpca_clusters_8 == 11 | rpca_clusters_8 == 21) , 
+        features = rownames(subcluster_21_genotype_markers_filtered)[1:10], group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subcluster 21 top 10 markers - T21 vs Control") + coord_flip()
+
+
+
+DotPlot(cluster_2_senescent_subclusters , 
+        features = top_10_markers_per_subcluster, group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subclusters 5, 11, and 21 top 10 markers \n T21 vs Control") + coord_flip()
+
+
+DotPlot(subset(cluster_2_senescent_subclusters, subset = rpca_clusters_8 == 11 | rpca_clusters_8 == 21) , 
+        features = top_10_markers_per_subcluster_no_5, group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subclusters 11 and 21 top 10 markers \n T21 vs Control") + coord_flip()
+
+
+
+
+gene_list <- c("NKX2-1","SOX","FOS","CEBPA","SHH","IRX","GRHL2","MEF2C","PBX1","TGFβ","FGFR","IGFBP","BMP","NOTCH","NOTCH3","DIXDC1","DACT2","DNMT3A","HELLS","JAG1","SLC1A2","FABP5","UCP2","ACVR2B","CRLF1","CCN1","SMARCA5","NAIP")
+DotPlot(cluster_2_senescent_subclusters , 
+        features = gene_list, group.by = 'rpca_clusters_8_genotype') +
+    ggplot2::scale_colour_gradientn(colors = viridis::turbo(n = 10, direction = 1)) + 
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ggplot2::labs(title = "Subcluster 11 top 10 markers - T21 vs Control") + coord_flip()
+
+
+
+```
+
+```{r}
+cluster2_subpop_geno_markers <- FindAllMarkers(cluster_2_seurat, assay = 'SCT', verbose = TRUE)
+
+
+cluster2_subpop_geno_markers_split <- lapply(seq_along((cluster2_subpop_geno_markers$cluster %>% unique())), 
+                                             function(i) cluster2_subpop_geno_markers %>% dplyr::filter(cluster == (cluster2_subpop_geno_markers$cluster %>% unique())[i]) )
+
+senescence_markers_subclusters <- cluster2_subpop_geno_markers[cluster2_subpop_geno_markers$gene %in% sen_mayo,]
+
+senescence_markers_subclusters_filt <- senescence_markers_subclusters %>% 
+  dplyr::filter(cluster == 'subcluster_11-T21' | cluster == 'subcluster_5-T21' |cluster ==  'subcluster_13-T21' | cluster == 'subcluster_21-T21' |cluster ==  'subcluster_22-T21') %>% dplyr::filter(avg_log2FC > 0)
+
+
+
+senescence_markers_subclusters_filt_split <- lapply(seq_along((senescence_markers_subclusters_filt$cluster %>% unique())), 
+                                             function(i) senescence_markers_subclusters_filt %>% dplyr::filter(cluster == (senescence_markers_subclusters_filt$cluster %>% unique())[i]) )
+
+senescence_markers_subclusters_filt_split[[1]]
+
+metadata_sub <- cluster_2_seurat@meta.data[,c('rpca_clusters_8','genotype', 'senescence_score', 'rpca_clusters_8_genotype')]
+metadata_sub$rpca_clusters_8 <- as.factor(metadata_sub$rpca_clusters_8)
+metadata_sub$genotype <- as.factor(metadata_sub$genotype)
+metadata_sub$rpca_clusters_8_genotype <- as.factor(metadata_sub$rpca_clusters_8_genotype)
+
+library(tidyverse)
+library(broom)
+
+
+kw_5 <- kruskal.test(senescence_score ~ genotype, data =  metadata_sub, subset = rpca_clusters_8 == 5)
+kw_21 <- kruskal.test(senescence_score ~ genotype, data =  metadata_sub, subset = rpca_clusters_8 == 21)
+kw_11 <- kruskal.test(senescence_score ~ genotype, data =  metadata_sub, subset = rpca_clusters_8 == 11)
+
+kw_5$p.value
+kw_11$p.value
+kw_21$p.value
+
+p.adjust(c(kw_5$p.value, kw_11$p.value, kw_21$p.value), method = "holm")
+
+
+test <- metadata_sub %>% 
+  group_by(rpca_clusters_8) %>%
+  summarise(fit = list(kruskal.test(senescence_score ~ genotype) %>% broom::tidy)) %>% 
+  unnest_wider(fit)
+
+
+
+d %>% 
+  group_by(Day) %>% 
+  summarise(fit = list(kruskal.test(Value ~ Group) %>% tidy)) %>% 
+  unnest_wider(fit)
+
+```
+
+
+#Hongwei doesnt like the gsea plots... try making new ones w subclusters
+```{r}
+library(org.Hs.eg.db)
+
+bt <- toTable(org.Hs.egSYMBOL)
+
+entrez_gt <- AnnotationDbi::select(org.Hs.eg.db, 
+               keys = bt$gene_id, 
+               keytype = "ENTREZID", columns = c("GENETYPE"))
+
+entrez_gt <- entrez_gt %>% as.data.frame() %>% dplyr::filter(GENETYPE == 'protein-coding')
+
+entrez2symbol <- AnnotationDbi::select(org.Hs.eg.db, 
+       keys = entrez_gt$ENTREZID, 
+       keytype = "ENTREZID", 
+       column = c("SYMBOL", "ENTREZID"))
+
+
+subcluster_5_genotype_markers
+subcluster_5_genotype_markers$SYMBOL <- rownames(subcluster_5_genotype_markers)
+
+subcluster_11_genotype_markers
+subcluster_11_genotype_markers$SYMBOL <- rownames(subcluster_11_genotype_markers)
+
+subcluster_21_genotype_markers
+subcluster_21_genotype_markers$SYMBOL <- rownames(subcluster_21_genotype_markers)
+
+subcluster_5_genotype_markers_ez <- left_join(subcluster_5_genotype_markers, entrez2symbol) %>% drop_na() %>% dplyr::arrange(desc(avg_log2FC))
+subcluster_11_genotype_markers_ez <- left_join(subcluster_11_genotype_markers, entrez2symbol) %>% drop_na() %>% dplyr::arrange(desc(avg_log2FC))
+subcluster_21_genotype_markers_ez <- left_join(subcluster_21_genotype_markers, entrez2symbol) %>% drop_na() %>% dplyr::arrange(desc(avg_log2FC))
+ 
+
+subcluster_5_genotype_markers_ez <- subcluster_5_genotype_markers_ez %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange(desc(avg_log2FC))
+subcluster_11_genotype_markers_ez <- subcluster_11_genotype_markers_ez %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange(desc(avg_log2FC))
+subcluster_21_genotype_markers_ez <- subcluster_21_genotype_markers_ez %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange(desc(avg_log2FC))
+
+subcluster_5_genotype_markers_up <- subcluster_5_genotype_markers %>% 
+  dplyr::filter(p_val_adj <= .05) %>% 
+  dplyr::filter(avg_log2FC >= .5) %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange(desc(avg_log2FC))
+
+subcluster_5_genotype_markers_down <- subcluster_5_genotype_markers %>% 
+  dplyr::filter(p_val_adj <= .05) %>% 
+  dplyr::filter(avg_log2FC <= -.5) %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange((avg_log2FC))
+
+subcluster_11_genotype_markers_up <- subcluster_11_genotype_markers %>% 
+  dplyr::filter(p_val_adj <= .05) %>% 
+  dplyr::filter(avg_log2FC >= .5) %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange(desc(avg_log2FC))
+
+subcluster_11_genotype_markers_down <- subcluster_11_genotype_markers %>% 
+  dplyr::filter(p_val_adj <= .05) %>% 
+  dplyr::filter(avg_log2FC <= -.5) %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange((avg_log2FC))
+
+subcluster_21_genotype_markers_up <- subcluster_21_genotype_markers %>% 
+  dplyr::filter(p_val_adj <= .05) %>% 
+  dplyr::filter(avg_log2FC >= .5) %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange(desc(avg_log2FC))
+
+subcluster_21_genotype_markers_down <- subcluster_21_genotype_markers %>% 
+  dplyr::filter(p_val_adj <= .05) %>% 
+  dplyr::filter(avg_log2FC <= -.5) %>%
+  dplyr::arrange(p_val_adj) %>% 
+  dplyr::arrange((avg_log2FC))
+
+
+
+subcluster_5_genotype_markers_ez <- subcluster_5_genotype_markers_ez %>% mutate(rank = rank(avg_log2FC,  ties.method = "first")) %>% arrange(desc(rank))
+subcluster_11_genotype_markers_ez <- subcluster_11_genotype_markers_ez %>% mutate(rank = rank(avg_log2FC,  ties.method = "first")) %>% arrange(desc(rank))
+subcluster_21_genotype_markers_ez <- subcluster_21_genotype_markers_ez %>% mutate(rank = rank(avg_log2FC,  ties.method = "first")) %>% arrange(desc(rank))
+
+subcluster_5_genotype_markers_ez_gl <- subcluster_5_genotype_markers_ez[,'rank'] 
+names(subcluster_5_genotype_markers_ez_gl) <- subcluster_5_genotype_markers_ez[,'ENTREZID'] 
+
+subcluster_11_genotype_markers_ez_gl <- subcluster_11_genotype_markers_ez[,'rank'] 
+names(subcluster_11_genotype_markers_ez_gl) <- subcluster_11_genotype_markers_ez[,'ENTREZID'] 
+
+subcluster_21_genotype_markers_ez_gl <- subcluster_21_genotype_markers_ez[,'rank'] 
+names(subcluster_21_genotype_markers_ez_gl) <- subcluster_21_genotype_markers_ez[,'ENTREZID'] 
+
+
+
+
+inputList_sub <- list('subcluster_5' = (subcluster_5_genotype_markers_ez_gl), 
+             'subcluster_11' = (subcluster_11_genotype_markers_ez_gl), 
+             'subcluster_21' = (subcluster_21_genotype_markers_ez_gl))
+
+
+
+res.combined.GO.bp_sub <- compareCluster(
+  geneClusters = inputList_sub,
+  fun = "gseGO",
+  OrgDb = org.Hs.eg.db,
+  keyType = "ENTREZID",
+  ont = "BP",
+  eps = 0,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  minGSSize = 5,
+  maxGSSize = 500,
+  nPermSimple = 10000, scoreType = 'pos'
+)
+res.combined.GO.bp_sub <- setReadable(res.combined.GO.bp_sub, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+res.combined.GO.bp.simplify_sub <- clusterProfiler::simplify(res.combined.GO.bp_sub)
+
+dotplot(res.combined.GO.bp.simplify_sub, font.size=8, showCategory=5, title =("GSEA results"), split=".sign") + facet_grid(.~.sign) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+
+
+```
+
+
+
+
+
+# OrgDb
+```{r}
+#genelist
+library(AnnotationHub)
+library(clusterProfiler)
+library(fgsea)
+library(msigdbr)
+ah <- AnnotationHub()
+orgdb_hs <- query(ah, c("OrgDb", "Homo sapiens"))[["AH114084"]]
+```
+
+```{r}
+#note compareCluster won't work with custom enrichment code, try fgsea with msigdb instead
+
+#fgsea docs
+data(examplePathways)
+data(exampleRanks)
+fgseaRes <- fgsea(pathways = examplePathways, 
+                  stats    = exampleRanks,
+                  minSize  = 15,
+                  maxSize  = 500)
+
+#msigdb docs
+#retrieve collections
+hallmarks = subsetCollection(msigdb.hs, 'h')
+msigdb_ids = geneIds(hallmarks)
+
+#convert gene sets into a list of gene indices
+fry_indices = ids2indices(msigdb_ids, rownames(emat))
+fry_indices[1:2]
+```
+
+
+
+
+```{r}
+
+senescence_marker_avgexp <- AverageExpression(cluster_2_seurat, assays = 'SCT', group.by = 'rpca_clusters_8_genotype', features = senescence_markers_subclusters_filt$gene) 
+
+senescence_marker_avgexp <- senescence_marker_avgexp  %>% as.data.frame()
+senescence_marker_avgexp$gene <- rownames(senescence_marker_avgexp)
+
+senescence_marker_avgexp$cluster_11_log2fc <- log2( (senescence_marker_avgexp$SCT.subcluster.11.T21 + 0.00000001) / (senescence_marker_avgexp$SCT.subcluster.11.Control + 0.00000001) )
+senescence_marker_avgexp$cluster_13_log2fc <- log2( (senescence_marker_avgexp$SCT.subcluster.13.T21 + 0.00000001) / (senescence_marker_avgexp$SCT.subcluster.13.Control + 0.00000001) )
+senescence_marker_avgexp$cluster_21_log2fc <- log2( (senescence_marker_avgexp$SCT.subcluster.21.T21 + 0.00000001) / (senescence_marker_avgexp$SCT.subcluster.21.Control + 0.00000001) )
+senescence_marker_avgexp$cluster_22_log2fc <- log2( (senescence_marker_avgexp$SCT.subcluster.22.T21 + 0.00000001) / (senescence_marker_avgexp$SCT.subcluster.22.Control + 0.00000001) )
+senescence_marker_avgexp$cluster_5_log2fc <- log2(  (senescence_marker_avgexp$SCT.subcluster.5.T21 +  0.00000001) / (senescence_marker_avgexp$SCT.subcluster.5.Control +  0.00000001) )
+
+
+as.matrix(senescence_marker_avgexp[,c(14:18)])
+min(senescence_marker_avgexp[,c(14:18)])
+
+
+colors <- colorRampPalette( (brewer.pal(9, "YlOrRd")) )(255)
+
+
+
+ComplexHeatmap::pheatmap(as.matrix(senescence_marker_avgexp[,c(14:18)]),
+                         name = 'log2FC T21 vs Control',
+                         col = colors,
+                         border_color = NA,
+                         heatmap_legend_param = list(direction = 'horizontal'),
+                         border = F,
+                         cluster_cols = F)
+
+
+
+
+```
+
+```{r}
+library(org.Hs.eg.db)
+
+bt <- toTable(org.Hs.egSYMBOL)
+
+
+entrez_gt <- select(org.Hs.eg.db, 
+               keys = bt$gene_id, 
+               keytype = "ENTREZID", columns = c("GENETYPE"))
+
+entrez_gt <- entrez_gt %>% as.data.frame() %>% dplyr::filter(GENETYPE == 'protein-coding')
+
+entrez2symbol <- select(org.Hs.eg.db, 
+       keys = entrez_gt$ENTREZID, 
+       keytype = "ENTREZID", 
+       column = c("SYMBOL", "ENTREZID"))
+
+cluster2_subpop_geno_markers_ez <- left_join(cluster2_subpop_geno_markers, entrez2symbol, by = c('gene' = 'SYMBOL'))
+
+
+cluster2_subpop_geno_markers_ez <- cluster2_subpop_geno_markers_ez %>% 
+    data.frame() %>%
+    dplyr::arrange(p_val_adj) %>%
+    dplyr::arrange(desc(avg_log2FC))
+
+cluster2_subpop_geno_markers_ez <- cluster2_subpop_geno_markers_ez %>% drop_na()
+cluster2_subpop_geno_markers_ez_split <- lapply(seq_along((cluster2_subpop_geno_markers_ez$cluster %>% unique())), 
+                                             function(i) cluster2_subpop_geno_markers_ez %>% dplyr::filter(cluster == (cluster2_subpop_geno_markers_ez$cluster %>% unique())[i]) )
+
+```
+
+
+```{r}
+
+subcluster_22.T21 <- cluster2_subpop_geno_markers_ez_split[[1]]$avg_log2FC
+subcluster_13.T21 <- cluster2_subpop_geno_markers_ez_split[[2]]$avg_log2FC
+subcluster_13.Control <- cluster2_subpop_geno_markers_ez_split[[3]]$avg_log2FC
+subcluster_21.Control <- cluster2_subpop_geno_markers_ez_split[[4]]$avg_log2FC
+subcluster_21.T21 <- cluster2_subpop_geno_markers_ez_split[[5]]$avg_log2FC
+subcluster_22.Control <- cluster2_subpop_geno_markers_ez_split[[6]]$avg_log2FC
+subcluster_11.T21 <- cluster2_subpop_geno_markers_ez_split[[7]]$avg_log2FC
+subcluster_5.T21 <- cluster2_subpop_geno_markers_ez_split[[8]]$avg_log2FC
+subcluster_11.Control <- cluster2_subpop_geno_markers_ez_split[[9]]$avg_log2FC
+subcluster_5.Control <- cluster2_subpop_geno_markers_ez_split[[10]]$avg_log2FC
+
+names(subcluster_22.T21) <- cluster2_subpop_geno_markers_ez_split[[1]]$ENTREZID %>% as.character()
+names(subcluster_13.T21) <- cluster2_subpop_geno_markers_ez_split[[2]]$ENTREZID%>% as.character()
+names(subcluster_13.Control) <- cluster2_subpop_geno_markers_ez_split[[3]]$ENTREZID%>% as.character()
+names(subcluster_21.Control) <- cluster2_subpop_geno_markers_ez_split[[4]]$ENTREZID%>% as.character()
+names(subcluster_21.T21) <- cluster2_subpop_geno_markers_ez_split[[5]]$ENTREZID%>% as.character()
+names(subcluster_22.Control) <- cluster2_subpop_geno_markers_ez_split[[6]]$ENTREZID%>% as.character()
+names(subcluster_11.T21) <- cluster2_subpop_geno_markers_ez_split[[7]]$ENTREZID%>% as.character()
+names(subcluster_5.T21) <- cluster2_subpop_geno_markers_ez_split[[8]]$ENTREZID%>% as.character()
+names(subcluster_11.Control) <- cluster2_subpop_geno_markers_ez_split[[9]]$ENTREZID%>% as.character()
+names(subcluster_5.Control) <- cluster2_subpop_geno_markers_ez_split[[10]]$ENTREZID%>% as.character()
+
+gctest<-list('subcluster_22.T21' = names(subcluster_22.T21), 
+             'subcluster_13.T21' = names(subcluster_13.T21), 
+             'subcluster_13.Control' = names(subcluster_13.Control),
+             'subcluster_21.Control' = names(subcluster_21.Control),
+             'subcluster_21.T21' = names(subcluster_21.T21),
+             'subcluster_22.Control' = names(subcluster_22.Control),
+             'subcluster_11.T21' = names(subcluster_11.T21),
+             'subcluster_5.T21' = names(subcluster_5.T21),
+             'subcluster_11.Control' = names(subcluster_11.Control),
+             'subcluster_5.Control' = names(subcluster_5.Control))
+
+str(gctest)
+
+
+```
+
+```{r}
+
+# inputList <- list('subcluster_22.T21' = (subcluster_22.T21), 
+#              'subcluster_13.T21' = (subcluster_13.T21), 
+#              'subcluster_13.Control' = (subcluster_13.Control),
+#              'subcluster_21.Control' = (subcluster_21.Control),
+#              'subcluster_21.T21' = (subcluster_21.T21),
+#              'subcluster_22.Control' = (subcluster_22.Control),
+#              'subcluster_11.T21' = (subcluster_11.T21),
+#              'subcluster_5.T21' = (subcluster_5.T21),
+#              'subcluster_11.Control' = (subcluster_11.Control),
+#              'subcluster_5.Control' = (subcluster_5.Control))
+library(clusterProfiler)
+
+inputList <- list('subcluster_22.T21' = (subcluster_22.T21), 
+             'subcluster_13.T21' = (subcluster_13.T21), 
+             'subcluster_21.T21' = (subcluster_21.T21),
+             'subcluster_11.T21' = (subcluster_11.T21),
+             'subcluster_5.T21' = (subcluster_5.T21))
+
+res.combined.GO.bp <- compareCluster(
+  geneClusters = inputList,
+  fun = "gseGO",
+  OrgDb = org.Hs.eg.db,
+  keyType = "ENTREZID",
+  ont = "BP",
+  eps = 0,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  minGSSize = 5,
+  maxGSSize = 500
+)
+res.combined.GO.bp <- setReadable(res.combined.GO.bp, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+res.combined.GO.bp.simplify <- simplify(res.combined.GO.bp)
+
+dotplot(res.combined.GO.bp.simplify, font.size=8, showCategory=5, title =("GSEA results"), split=".sign") + facet_grid(.~.sign) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+
+write.xlsx(x = as.data.frame(res.combined.GO.bp) , file = here::here('comparecluster_go_bp.xlsx'))
+```
+```{r}
+
+res.combined.GO.mf <- compareCluster(
+  geneClusters = inputList,
+  fun = "gseGO",
+  OrgDb = org.Hs.eg.db,
+  keyType = "ENTREZID",
+  ont = "MF",
+  eps = 0,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  minGSSize = 5,
+  maxGSSize = 500
+)
+res.combined.GO.mf <- setReadable(res.combined.GO.mf, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+res.combined.GO.mf.simplify <- simplify(res.combined.GO.mf)
+
+dotplot(res.combined.GO.mf.simplify, font.size=8, showCategory=5, title =("GSEA results"), split=".sign") + facet_grid(.~.sign) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+
+write.xlsx(x = as.data.frame(res.combined.GO.mf) , file = here::here('comparecluster_go_mf.xlsx'))
+
+```
+```{r}
+res.combined.KEGG <- compareCluster(
+  geneClusters = inputList,
+  fun = "gseKEGG",
+  OrgDb = org.Hs.eg.db,
+  keyType = "ENTREZID",
+  eps = 0,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  minGSSize = 15,
+  maxGSSize = 500
+)
+
+
+
+res.combined.KEGG <- setReadable(res.combined.KEGG, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+
+
+
+dotplot(res.combined.simplify, ) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+
+dotplot(res.combined.simplify, font.size=8, showCategory=1, title =("GSEA results"), split=".sign") + facet_grid(.~.sign) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+
+
+# Set up for gene set enrichment
+```{r}
+library(msigdb)
+msigdb.hs <- getMsigdb(org = 'hs', id = 'SYM', version = '7.4')
+
+```
+
+```{r}
+library(msigdbr)
+human_msigdb <-  msigdbr(species = "Homo sapiens")
+msig_kegg <- human_msigdb %>% dplyr::filter(grepl("KEGG", gs_name))
+msig_kegg <- data.frame(msig_kegg )
+
+kegg_term2gene <- msig_kegg %>% dplyr::select(c(gs_exact_source, gene_symbol))
+kegg_term2name <- msig_kegg %>% dplyr::select(c(gs_exact_source, gs_name))
+```
+
+```{r}
+make_genelist <- function(all_cluster_markers){
+  
+    filtered_markers <- all_cluster_markers %>% 
+    data.frame() %>%
+    dplyr::arrange(p_val_adj) %>%
+    dplyr::arrange(desc(avg_log2FC)) %>%
+    #dplyr::filter(cluster == cluster_number) %>% 
+    dplyr::select(c(avg_log2FC, gene)) 
+    gene_list <- filtered_markers[,'avg_log2FC']
+    names(gene_list) <- filtered_markers[,'gene']
+  
+  return(gene_list)
+}
+
+
+library(clusterProfiler)
+#eg <- bitr(names(cluster2_genotype_gl), fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+
+make_ez_genelist <- function(all_cluster_markers){
+    #all_cluster_markers <- cluster2_genotype_markers %>% dplyr::filter(cluster == 'T21')
+    filtered_markers <- all_cluster_markers %>% 
+    data.frame() %>%
+    dplyr::arrange(p_val_adj) %>%
+    dplyr::arrange(desc(avg_log2FC))
+    eg <- bitr(filtered_markers$gene, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+    
+    filtered_markers <- left_join(filtered_markers, eg, by = c("gene" = "SYMBOL") ) %>% drop_na()
+ 
+    gene_list <- filtered_markers[,'avg_log2FC']
+    names(gene_list) <- filtered_markers[,'ENTREZID']
+    
+  return(gene_list)
+}
+
+run_gsea_gl <- function(genelist, term2gene, term2name, min, max){
+  enrichment_results <- clusterProfiler::GSEA(genelist, 
+         TERM2GENE=term2gene,
+         TERM2NAME=term2name,
+         pvalueCutoff=0.05,
+         pAdjustMethod='fdr',
+        minGSSize = min,
+        maxGSSize = max)
+  return(enrichment_results)
+}
+
+
+
+run_enrich <- function(genes, term2gene, term2name, min, max){
+  enrichment_results <- clusterProfiler::enricher(genes, 
+         TERM2GENE=term2gene,
+         TERM2NAME=term2name,
+         pvalueCutoff=0.05,
+         pAdjustMethod='fdr',
+         minGSSize = min,
+         maxGSSize = max)
+  return(enrichment_results)
+}
+
+
+
+
+cluster2_genotype_gl <- cluster2_genotype_markers %>% dplyr::filter(cluster == 'T21') %>% make_genelist()
+
+cluster2_genotype_up <- cluster2_genotype_markers %>% dplyr::filter(cluster == 'T21') %>% dplyr::filter(p_val_adj <= .05) %>% dplyr::filter(avg_log2FC >= .5) 
+cluster2_genotype_down <- cluster2_genotype_markers %>% dplyr::filter(cluster == 'T21') %>% dplyr::filter(p_val_adj <= .05) %>% dplyr::filter(avg_log2FC <= -.5)
+
+cluster2_genotype_KEGG_gsea <- run_gsea_gl(cluster2_genotype_gl,  kegg_term2gene, kegg_term2name, min=5, max=500)
+
+cluster2_genotype_KEGG_UP_ORA <- run_enrich(cluster2_genotype_up$gene,  kegg_term2gene, kegg_term2name, min=5, max=500)
+
+cluster2_genotype_KEGG_DOWN_ORA <- run_enrich(cluster2_genotype_down$gene, kegg_term2gene, kegg_term2name, min=5, max=500)
+
+
+
+
+```
+
+```{r}
+cluster2_genotype_gl_ez <- cluster2_genotype_markers %>% dplyr::filter(cluster == 'T21') %>% make_ez_genelist()
+cluster2_genotype_up_ez <-  bitr(cluster2_genotype_up$gene, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+cluster2_genotype_down_ez <-  bitr(cluster2_genotype_down$gene, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+
+
+```
+
+# Actually run enrichment and ORA for cluster 2 here...
+```{r}
+
+cluster2_genotype_up_ego <- enrichGO(gene = cluster2_genotype_up_ez$ENTREZID,
+                OrgDb         = 'org.Hs.eg.db',
+                ont           = "bp",
+                pAdjustMethod = "BH",
+                minGSSize = 5,
+                maxGSSize = 500,
+                qvalueCutoff  = 0.05,
+        readable      = TRUE)
+
+cluster2_genotype_down_ego <- enrichGO(gene = cluster2_genotype_down_ez$ENTREZID,
+                OrgDb         = 'org.Hs.eg.db',
+                ont           = "bp",
+                pAdjustMethod = "BH",
+                minGSSize = 5,
+                maxGSSize = 500,
+                qvalueCutoff  = 0.05,
+        readable      = TRUE)
+
+
+cluster2_genotype_gsego <- gseGO(geneList = cluster2_genotype_gl_ez,
+                OrgDb         = 'org.Hs.eg.db',
+                ont           = "bp",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.05,
+                minGSSize = 5,
+                maxGSSize = 500,
+                eps=0,
+                nPermSimple = 10000)
+
+
+
+
+
+
+
+
+cluster2_genotype_up_ekegg <-
+  enrichKEGG(
+    gene = cluster2_genotype_up_ez$ENTREZID,
+    organism = 'hsa',
+    keyType = 'ncbi-geneid',
+    pAdjustMethod = "BH",
+    minGSSize = 5,
+    maxGSSize = 500,
+    qvalueCutoff  = 0.05
+  )
+
+cluster2_genotype_down_ekegg <-
+  enrichKEGG(
+    gene = cluster2_genotype_down_ez$ENTREZID,
+    organism = 'hsa',
+    keyType = 'ncbi-geneid',
+    pAdjustMethod = "BH",
+    minGSSize = 5,
+    maxGSSize = 500,
+    qvalueCutoff  = 0.05
+  )
+
+
+cluster2_genotype_gsekegg <- gseKEGG(geneList = cluster2_genotype_gl_ez,
+    organism = 'hsa',
+    keyType = 'ncbi-geneid',
+    pAdjustMethod = "BH",
+    minGSSize = 5,
+    maxGSSize = 500, eps=0  )
+
+
+
+
+# 2: In fgseaMultilevel(pathways = pathways, stats = stats, minSize = minSize,  :
+#   There were 1 pathways for which P-values were not calculated properly due to unbalanced (positive and negative) gene-level statistic values. For such pathways pval, padj, NES, log2err are set to NA. You can try to increase the value of the argument nPermSimple (for example set it nPermSimple = 10000)
+# 3: In fgseaMultilevel(pathways = pathways, stats = stats, minSize = minSize,  :
+#   For some of the pathways the P-values were likely overestimated. For such pathways log2err is set to NA.
+# 4: In fgseaMultilevel(pathways = pathways, stats = stats, minSize = minSize,  :
+#   For some pathways, in reality P-values are less than 1e-10. You can set the `eps` argument to zero for better estimation.
+
+cluster2_genotype_up_ego2 <- clusterProfiler::simplify(cluster2_genotype_up_ego, cutoff=0.5, by="p.adjust", select_fun=min)
+cluster2_genotype_down_ego2 <- clusterProfiler::simplify(cluster2_genotype_down_ego, cutoff=0.5, by="p.adjust", select_fun=min)
+cluster2_genotype_gsego2 <- clusterProfiler::simplify(cluster2_genotype_gsego, cutoff=0.5, by="p.adjust", select_fun=min)
+
+"response to transforming growth factor beta"
+```
+
+```{r}
+
+dp1 <- dotplot(cluster2_genotype_KEGG_UP_ORA) + ggtitle("Over-representation analysis of genes Upregulated in T21 - KEGG")
+dp2 <- dotplot(cluster2_genotype_up_ego2) + ggtitle("Over-representation analysis of genes Upregulated in T21- GO")
+
+dp1/dp2
+
+dp3<-dotplot(cluster2_genotype_KEGG_DOWN_ORA) + ggtitle("Over-representation analysis of genes Downregulated in T21 - KEGG")
+
+dp4<-dotplot(cluster2_genotype_down_ego2) + ggtitle("Over-representation analysis of genes Downregulated in T21 - GO")
+
+dp3/dp4
+```
+
+```{r}
+dp5 <- dotplot(cluster2_genotype_gsego2) + ggtitle("Gene set enrichment of ranked gene list of T21 markers within cluster 2 - GO")
+dp6 <- dotplot(cluster2_genotype_KEGG_gsea) + ggtitle("Gene set enrichment of ranked gene list of T21 markers within cluster 2 - KEGG")
+
+dp6/dp5
+
+dotplot(cluster2_genotype_gsego2, color = 'NES') + ggtitle("Gene set enrichment of ranked gene list of T21 markers within cluster 2 - GO")
+dotplot(cluster2_genotype_KEGG_gsea, color = 'NES') + ggtitle("Gene set enrichment of ranked gene list of T21 markers within cluster 2 - KEGG")
+
+
+
+```
+
+```{r}
+
+cluster2_genotype_down_ego2  %>% dplyr::filter(grepl('transcription factor', Description))
+
+
+df1 %>% filter(!grepl("^x|xx$", fruit))
+```
+
+```{r}
+write.xlsx(cluster2_genotype_KEGG_UP_ORA %>% as.data.frame(), file = here::here('cluster2_T21_UP_KEGG_ORA.xlsx'))
+write.xlsx(cluster2_genotype_KEGG_DOWN_ORA %>% as.data.frame(), file = here::here('cluster2_T21_DOWN_KEGG_ORA.xlsx'))
+write.xlsx(cluster2_genotype_KEGG_gsea %>% as.data.frame(), file = here::here('cluster2_T21_KEGG_GSEA.xlsx'))
+
+
+write.xlsx(cluster2_genotype_up_ego2 %>% as.data.frame(), file = here::here('cluster2_T21_UP_GO_ORA.xlsx'))
+write.xlsx(cluster2_genotype_down_ego2  %>% as.data.frame(), file = here::here('cluster2_T21_DOWN_GO_ORA.xlsx'))
+write.xlsx(cluster2_genotype_gsego2 %>% as.data.frame(), file = here::here('cluster2_T21_GO_GSEA.xlsx'))
+
+
+cluster2_genotype_up_ego2 <- simplify(cluster2_genotype_up_ego, cutoff=0.5, by="p.adjust", select_fun=min)
+cluster2_genotype_down_ego2 <- simplify(cluster2_genotype_down_ego, cutoff=0.5, by="p.adjust", select_fun=min)
+cluster2_genotype_gsego2 <- simplify(cluster2_genotype_gsego, cutoff=0.5, by="p.adjust", select_fun=min)
+
+
+```
+
+```{r}
+dotplot(cluster2_genotype_T21_gl_reactome, showCategory=30)
+dotplot(cluster2_genotype_control_gl_reactome, showCategory=30)
+
+enrichplot::heatplot(x = cluster2_genotype_T21_gl_KEGG, foldChange = cluster2_genotype_T21_gl) 
+
+enrichplot::heatplot(x = cluster2_genotype_control_gl_KEGG, foldChange = cluster2_genotype_control_gl)
+
+enrichplot::heatplot(x = cluster2_genotype_T21_gl_reactome, foldChange = cluster2_genotype_T21_gl)
+enrichplot::heatplot(x = cluster2_genotype_control_gl_reactome, foldChange = cluster2_genotype_control_gl)
+```
+
+```{r}
+#https://www.biostars.org/p/132575/
+library(enrichplot)
+
+dotplot(cluster2_genotype_T21_gl_KEGG, showCategory=30)
+
+enrichplot::heatplot(x = cluster2_genotype_T21_gl_KEGG, foldChange = cluster2_genotype_T21_gl)
+enrichplot::heatplot(x = cluster2_genotype_control_gl_KEGG, foldChange = cluster2_genotype_control_gl)
+
+#more red - higher in T21, more blue - higher in Control 
+```
+
+
+
+dplyr::filter( msig_kegg, grepl('CLDN18', gene_symbol, ignore.case= TRUE)) #CLDN18 has v big FC when I look at (cluster_markers_split[[3]]) %>% head() 
+
+
+
+
+DotPlot(all_data_sub, features = 'CLDN18', group.by = 'seurat_clusters_genotype')
+
+
+```
+
+
+```{r}
+#BLUE
+c(unique(((dplyr::filter( msig_kegg, grepl('TIGHT JUNCTION', gs_description, ignore.case= TRUE)))$gene_symbol)))
+
+#RED
+c(unique(((dplyr::filter( msig_kegg, grepl('ASTHMA', gs_description, ignore.case= TRUE)))$gene_symbol))) 
+
+#Asthma is higher in control, P450 is higher in treatment
+cluster2_gl_gsea %>% as.data.frame() %>% dplyr::filter( Description == 'KEGG_ASTHMA' | Description == 'KEGG_TIGHT_JUNCTION')
+
+cluster2_gsea_res <- cluster2_gl_gsea %>% as.data.frame() 
+
+
+```
+
+```{r}
+DefaultAssay(all_data_sub) <- 'SCT'
+DotPlot(subset(all_data_sub, subset = seurat_clusters == '2'), 
+        features = c(unique(((dplyr::filter( msig_kegg, grepl('TIGHT JUNCTION', gs_description, ignore.case= TRUE)))$gene_symbol))), 
+        group.by = 'genotype')&
+  theme(text = element_text(face = "bold", size = 20),
+        axis.text.x=element_text(angle=45, hjust=1, size=20),
+        axis.title = element_text(size=20,face="bold"),
+        axis.title.y.right = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.line = element_line(size=1),
+        legend.position = 'right') & labs(title = 'Tight Junction')
+
+DotPlot(subset(all_data_sub, subset = seurat_clusters == '2'), 
+        features = c(unique(((dplyr::filter( msig_kegg, grepl('ASTHMA', gs_description, ignore.case= TRUE)))$gene_symbol))), 
+        group.by = 'genotype')&
+  theme(text = element_text(face = "bold", size = 20),
+        axis.text.x=element_text(angle=45, hjust=1, size=20),
+        axis.title = element_text(size=20,face="bold"),
+        axis.title.y.right = element_text(size = 20),
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.line = element_line(size=1),
+        legend.position = 'right') & labs(title = 'Asthma')
+
+ep / p450 /asthma
+```
+
+
+
+```{r}
+run_gsea <- function(all_cluster_markers, cluster_number, term2gene, term2name){
+  
+  #all_cluster_markers <- cluster_markers
+  
+  filtered_markers <- all_cluster_markers %>% 
+    data.frame() %>%
+    dplyr::arrange(p_val_adj) %>%
+    dplyr::arrange(desc(avg_log2FC)) %>%
+    #dplyr::filter(cluster == cluster_number) %>% 
+    dplyr::select(c(avg_log2FC, gene)) 
+  
+  gene_list <- filtered_markers[,1]
+  names(gene_list) <- filtered_markers[,2]
+  
+  enrichment_results <- clusterProfiler::GSEA(gene_list, 
+         TERM2GENE=term2gene,
+         TERM2NAME=term2name,
+         pvalueCutoff=0.05,
+         pAdjustMethod='fdr',
+        minGSSize = 10,
+        maxGSSize = 50,)
+  return(enrichment_results)
+}
+```
+
+# Run gene set enrichment on each cluster
+
+```{r}
+cluster_levels <- unique(all_data_sub@meta.data$seurat_clusters)
+
+kegg_enrich <- lapply(seq_along(cluster_levels), function(i) run_gsea(cluster_markers_split[[i]], cluster_levels[i], kegg_term2gene, kegg_term2name))
+
+biocarta_enrich <- lapply(seq_along(cluster_levels), function(i) run_gsea(cluster_markers_split[[i]], cluster_levels[i], biocarta_term2gene, biocarta_term2name))
+
+reactome_enrich <- lapply(seq_along(cluster_levels), function(i) run_gsea(cluster_markers_split[[i]], cluster_levels[i], reactome_term2gene, reactome_term2name))
+
+pid_enrich <- lapply(seq_along(cluster_levels), function(i) run_gsea(cluster_markers_split[[i]], cluster_levels[i], pid_term2gene, pid_term2name))
+
+wikipathways_enrich <- lapply(seq_along(cluster_levels), function(i) run_gsea(cluster_markers_split[[i]], cluster_levels[i], wikipathways_term2gene, wikipathways_term2name))
+
+dfl_enrich <- lapply(seq_along(cluster_levels), function(i) run_gsea(cluster_markers_split[[i]], cluster_levels[i], dfl_term2gene, dfl_term2name))
+```
+
+```{r}
+
+```
+
+```{r}
+p2 <-  clusterProfiler::heatplot(kegg_enrich[[1]], foldChange=cluster_markers_split[[1]], showCategory=5)
+cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+```
+
+
+# Split by cluster and write outputs
+```{r eval = FALSE}
+lapply(seq_along(cluster_markers_split), function(i) print(cluster_markers_split[i]))
+lapply(seq_along(cluster_markers_split), function(i) openxlsx::write.xlsx(x = cluster_markers_split[[i]],
+                                                                          file = here::here(paste0('cluster_', i-1, '_markers.xlsx'))))
+
+lapply(seq_along(status_markers_split), function(i) openxlsx::write.xlsx(x = status_markers_split[[i]],
+                                                                          file = here::here(paste0('status_', i-1, '_markers.xlsx'))))
+```
+
+# Write outputs of gene enrichment analysis - kegg
+
+```{r eval = FALSE}
+kegg_cluster_doptlots<-lapply(seq_along(cluster_markers_split), function(i) dotplot(kegg_enrich[[i]], x = 'Count', showCategory=30, font.size=12, title = paste0('cluster ', i-1 ,' GSEA KEGG genes')))
+
+lapply(seq_along(cluster_markers_split), function(i) ggsave(filename=here::here(paste0('cluster_', i-1 ,'_dp_KEGG.png')),plot=kegg_cluster_doptlots[[i]],device='png', units = 'in',height = 11,width = 7) )
+
+lapply(seq_along(cluster_markers_split), function(i) openxlsx::write.xlsx(x = data.frame(kegg_enrich[[i]]),file = here::here(paste0('cluster_', i-i ,'_kegg_enrich.xlsx'))))
+
+```
+
+
+<!-- BgRatio, M/N. -->
+
+<!-- M = size of the geneset (eg size of the E2F_targets); (is the number of genes within that distribution that are annotated (either directly or indirectly) to the node of interest). -->
+
+<!-- N = size of all of the unique genes in the collection of genesets (example the HALLMARK collection); (is the total number of genes in the background distribution (universe) -->
+
+<!-- GeneRatio is k/n. -->
+
+<!-- k = size of the overlap of 'a vector of gene id' you input with the specific geneset (eg E2F_targets), only unique genes; (the number of genes within that list n, which are annotated to the node. -->
+
+<!-- n = size of the overlap of 'a vector of gene id' you input with all the members of the collection of genesets (eg the HALLMARK collection),only unique genes; is the size of the list of genes of interest  -->
+
+
+# Try msigdb for annotations...
+
+```{r}
+
+dfl <- str_subset(unique(h_gene_sets$gs_name), pattern = "DESCARTES_FETAL_LUNG", negate = FALSE)
+  
+#str_subset(unique(h_gene_sets$gs_name), pattern = "LUNG", negate = FALSE) #DESCARTES_FETAL_LUNG_BRONCHIOLAR_AND_ALVEOLAR_EPITHELIAL_CELLS or TRAVAGLINI_LUNG_BASAL_CELL
+
+dfl_genesets <- h_gene_sets[h_gene_sets$gs_name %in% dfl,]
+
+dfl_term2gene <- dfl_genesets %>% dplyr::select(c(gs_name, gene_symbol))
+dfl_term2name <- dfl_genesets %>% dplyr::select(c(gs_url, gs_name))
+```
+
+```{r}
+
+#dfl - DESCARTES_FETAL_LUNG
+run_gse_dfl <- function(all_cluster_markers, cluster_number, term2gene, term2name){
+  filtered_markers <- all_cluster_markers %>% 
+    dplyr::filter(cluster == cluster_number) %>% 
+    dplyr::select(c(avg_log2FC, gene)) %>%
+    dplyr::arrange(desc(avg_log2FC))
+  
+  gene_list <- filtered_markers[,1]
+  names(gene_list) <- filtered_markers[,2]
+
+  enrichment_results <- clusterProfiler::GSEA(gene_list, 
+         TERM2GENE=term2gene,
+         minGSSize=1,
+         maxGSSize=10000,
+         pvalueCutoff=0.05,
+         pAdjustMethod='fdr')
+  return(enrichment_results)
+}
+```
+
+```{r}
+cluster_0_dfl_enrich <- run_gse_dfl(cluster_markers, '0', dfl_term2gene)
+cluster_1_dfl_enrich <- run_gse_dfl(cluster_markers, '2', dfl_term2gene)
+cluster_2_dfl_enrich <- run_gse_dfl(cluster_markers, '3', dfl_term2gene)
+cluster_3_dfl_enrich <- run_gse_dfl(cluster_markers, '4', dfl_term2gene)
+cluster_4_dfl_enrich <- run_gse_dfl(cluster_markers, '4', dfl_term2gene)
+cluster_5_dfl_enrich <- run_gse_dfl(cluster_markers, '5', dfl_term2gene)
+cluster_6_dfl_enrich <- run_gse_dfl(cluster_markers, '6', dfl_term2gene)
+cluster_7_dfl_enrich <- run_gse_dfl(cluster_markers, '7', dfl_term2gene)
+cluster_8_dfl_enrich <- run_gse_dfl(cluster_markers, '8', dfl_term2gene)
+cluster_9_dfl_enrich <- run_gse_dfl(cluster_markers, '9', dfl_term2gene)
+cluster_10_dfl_enrich <- run_gse_dfl(cluster_markers, '10', dfl_term2gene)
+
+```
+
+```{r}
+library(enrichplot)
+dotplot(cluster_0_dfl_enrich )
+```
+
+```{r}
+#A positive ES indicates gene set enrichment at the top of the ranked list; a negative ES indicates gene set enrichment at the bottom of the ranked list.
+cluster_0_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_STROMAL_CELLS 
+kegg_enrich[1]  %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_DRUG_METABOLISM_CYTOCHROME_P450 
+```
+
+```{r}
+cluster_1_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_BRONCHIOLAR_AND_ALVEOLAR_EPITHELIAL_CELLS
+kegg_enrich[2] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_TIGHT_JUNCTION, KEGG_RIBOSOME
+```
+
+```{r}
+cluster_2_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_VASCULAR_ENDOTHELIAL_CELLS
+kegg_enrich[3] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+#Look at the distributions of the cell types in cluster 2
+#In cluster 2, what other pathways are enriched?
+#Run GSEA with other pathways too (KEGG is a bit too generic and so not super meaningful here)
+#REACTOME, WIKIPATHWAYS, GO, BIOCARTA, PID, etc.
+#Comparing T21 and control, which genes/pathways are enriched in T21?
+#In the marker genes, 
+```
+
+```{r}
+cluster_3_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_MEGAKARYOCYTES 
+kegg_enrich[4] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+```
+
+```{r}
+cluster_4_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_MEGAKARYOCYTES
+kegg_enrich[5]%>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+```
+
+```{r}
+cluster_5_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_VISCERAL_NEURONS
+kegg_enrich[6] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+```
+
+```{r}
+cluster_6_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_MYELOID_CELLS
+kegg_enrich[7] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+```
+
+```{r}
+cluster_7_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_LYMPHOID_CELLS 
+kegg_enrich[8] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+```
+
+```{r}
+cluster_8_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_MEGAKARYOCYTES  
+kegg_enrich[9] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+```
+
+```{r}
+cluster_9_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_CILIATED_EPITHELIAL_CELLS
+kegg_enrich[10]%>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+```
+
+```{r}
+cluster_10_dfl_enrich %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #DESCARTES_FETAL_LUNG_LYMPHOID_CELLS  
+kegg_enrich[11] %>% data.frame() %>% dplyr::filter(enrichmentScore > 0) %>% head(n=5) #KEGG_NOTCH_SIGNALING_PATHWAY
+
+```
+
+```{r eval=FALSE}
+save.image(here::here('20241211.RData'))
+```
+
+#Could also try CompareCluster:
+```{r}
+
+
+```
