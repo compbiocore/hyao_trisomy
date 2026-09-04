@@ -39,9 +39,6 @@ library(stringr)
 set.seed(61)
 options(future.globals.maxSize = 4000 * 1024^3)
 future::plan("multisession", workers = 4)
-load((here::here('20241220.RData')))
-
-#save.image(here::here('20241220.RData'))
 ```
 
 # Which cell types are senescing? Mesenchymal? Macros? Also need to do enrichment analysis in those cell types
