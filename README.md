@@ -1,6 +1,6 @@
 ## Analysis notebook summary
 
-The main analysis is in [`notebooks/analysis.qmd`](notebooks/analysis.qmd). It analyzes single-cell RNA-sequencing data from nine Cell Ranger samples (`GSM8403163`–`GSM8403171`) representing trisomy 21 (T21) and control embryonic samples.  Its central questions are which cell types and subclusters show senescence-associated profiles, how those profiles differ between T21 and controls, and which biological pathways distinguish the genotypes. When enabled, it writes marker and enrichment tables (Excel) and figures (PNG) to the repository root, including cluster marker files, senescence/cluster plots, and cluster 2 T21-versus-control GO/KEGG results.
+The main analysis is in [`notebooks/analysis.qmd`](notebooks/analysis.qmd). It analyzes single-cell RNA-sequencing data from nine Cell Ranger samples (`GSM8403163`–`GSM8403171`) representing trisomy 21 (T21) and control embryonic samples.  Its central questions are which cell types and subclusters show senescence-associated profiles, how those profiles differ between T21 and controls, and which biological pathways distinguish the genotypes. When enabled, it writes marker and enrichment tables (Excel) and figures (PNG) to the repository root, including cluster marker files, senescence/cluster plots, and cluster 2 T21-versus-control GO/KEGG results. All dependencies were packaged in a Docker container at `ghcr.io/compbiocore/hyao_trisomy`.
 
 The workflow is:
 
